@@ -11,7 +11,4 @@ output/
 .idea/
 
 web/*.html
-
-!web/HeroDirt_trails.html
-!web/data/
-!web/data/*.geojson
+web/data/
