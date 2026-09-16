@@ -10,5 +10,8 @@ output/
 .vscode/
 .idea/
 
-# Generated web maps -- too large for GitHub until optimized
 web/*.html
+
+!web/HeroDirt_trails.html
+!web/data/
+!web/data/*.geojson

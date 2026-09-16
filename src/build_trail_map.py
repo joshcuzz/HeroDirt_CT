@@ -69,6 +69,15 @@ OUTPUT_HTML = (
     / "web/HeroDirt_trails.html"
 )
 
+WEB_DATA_DIR = (
+    ROOT
+    / "web/data"
+)
+
+WEB_DATA_DIR.mkdir(
+    parents=True,
+    exist_ok=True,
+)
 
 # ============================================================
 # SETTINGS
@@ -1328,6 +1337,7 @@ for hour in FORECAST_HOURS:
 
     chunk_count = 0
 
+    geojson_features = []
 
     for trail in trails:
 
@@ -1425,72 +1435,105 @@ for hour in FORECAST_HOURS:
                 "class"
             ]
 
-
-            line = folium.PolyLine(
-
-                locations=chunk[
+            coords_lonlat = [
+                [
+                    float(lon),
+                    float(lat),
+                ]
+                for lat, lon in chunk[
                     "coords"
-                ],
+                ]
+            ]
 
-                color=CLASS_COLORS[
-                    cid
-                ],
+            geojson_features.append(
+                {
+                    "type": "Feature",
 
-                weight=5,
+                    "properties": {
+                        "trail":
+                            trail[
+                                "name"
+                            ],
 
-                opacity=0.90,
+                        "forecast_label":
+                            label,
 
-                tooltip=(
-                    f"{trail['name']} — "
-                    f"{CLASS_NAMES[cid]} "
-                    f"({label})"
-                ),
+                        "valid_time":
+                            str(
+                                valid_time
+                            ),
+
+                        "local_condition":
+                            CLASS_NAMES[
+                                cid
+                            ],
+
+                        "median_F":
+                            round(
+                                median_F,
+                                3,
+                            ),
+
+                        "median_score":
+                            round(
+                                median_score,
+                                1,
+                            ),
+
+                        "color":
+                            CLASS_COLORS[
+                                cid
+                            ],
+                    },
+
+                    "geometry": {
+                        "type": "LineString",
+
+                        "coordinates":
+                            coords_lonlat,
+                    },
+                }
             )
-
-
-            line.add_to(
-                fg
-            )
-
-
-            trail_line_metadata[
-                line.get_name()
-            ] = {
-
-                "trail":
-                    trail[
-                        "name"
-                    ],
-
-                "forecast_label":
-                    label,
-
-                "valid_time":
-                    str(
-                        valid_time
-                    ),
-
-                "local_condition":
-                    CLASS_NAMES[
-                        cid
-                    ],
-
-                "median_F":
-                    round(
-                        median_F,
-                        3,
-                    ),
-
-                "median_score":
-                    round(
-                        median_score,
-                        1,
-                    ),
-            }
-
 
             chunk_count += 1
+    hour_tag = (
+        "now"
+        if hour == 0
+        else f"plus{hour}"
+    )
 
+    geojson_name = (
+        f"trails_{hour_tag}.geojson"
+    )
+
+    geojson_path = (
+        WEB_DATA_DIR
+        / geojson_name
+    )
+
+    with open(
+        geojson_path,
+        "w",
+    ) as f:
+
+        json.dump(
+            {
+                "type":
+                    "FeatureCollection",
+
+                "features":
+                    geojson_features,
+            },
+            f,
+            separators=(
+                ",",
+                ":",
+            ),
+        )
+
+    fg.geojson_url = (
+        f"data/{geojson_name}"
+    )
 
     fg.add_to(
         m
@@ -1504,6 +1547,25 @@ for hour in FORECAST_HOURS:
             valid_time,
         )
     )
+
+
+forecast_geojson_config = []
+
+for fg in forecast_layers:
+
+    forecast_geojson_config.append(
+        {
+            "layer":
+                fg.get_name(),
+
+            "url":
+                fg.geojson_url,
+        }
+    )
+
+forecast_geojson_js = json.dumps(
+    forecast_geojson_config
+)
 
 
 # ============================================================
@@ -2413,6 +2475,254 @@ forecast_layer_js = (
 map_name = m.get_name()
 
 
+
+geojson_loader_js = r"""
+        var forecastGeoJSON =
+            __FORECAST_GEOJSON_CONFIG__;
+
+
+        function addExternalTrailLayer(
+            targetGroup,
+            url
+        ) {
+
+            fetch(url)
+
+            .then(function(response) {
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        "Could not load "
+                        + url
+                    );
+
+                }
+
+                return response.json();
+
+            })
+
+            .then(function(data) {
+
+                L.geoJSON(
+                    data,
+                    {
+                        style:
+                            function(feature) {
+
+                                return {
+                                    color:
+                                        feature.properties.color,
+
+                                    weight:
+                                        5,
+
+                                    opacity:
+                                        0.90
+                                };
+
+                            },
+
+
+                        onEachFeature:
+                            function(
+                                feature,
+                                layer
+                            ) {
+
+                                var meta =
+                                    feature.properties;
+
+
+                                layer.bindTooltip(
+                                    meta.trail
+                                    +
+                                    " — "
+                                    +
+                                    meta.local_condition
+                                    +
+                                    " ("
+                                    +
+                                    meta.forecast_label
+                                    +
+                                    ")"
+                                );
+
+
+                                layer.on(
+                                    "click",
+                                    function(e) {
+
+                                        L.DomEvent.stopPropagation(
+                                            e
+                                        );
+
+
+                                        var lat =
+                                            e.latlng.lat;
+
+                                        var lon =
+                                            e.latlng.lng;
+
+
+                                        var popupHTML =
+                                            "<div style='font-family:Arial;min-width:245px;'>"
+                                            +
+                                            "<b style='font-size:15px;'>"
+                                            +
+                                            meta.trail
+                                            +
+                                            "</b>"
+                                            +
+                                            "<br><br>"
+                                            +
+                                            "<b>Forecast:</b> "
+                                            +
+                                            meta.forecast_label
+                                            +
+                                            "<br>"
+                                            +
+                                            "<b>Valid:</b> "
+                                            +
+                                            meta.valid_time
+                                            +
+                                            "<br><br>"
+                                            +
+                                            "<b>This segment:</b> "
+                                            +
+                                            meta.local_condition
+                                            +
+                                            "<br>"
+                                            +
+                                            "<b>Trail median F:</b> "
+                                            +
+                                            Number(
+                                                meta.median_F
+                                            ).toFixed(2)
+                                            +
+                                            "<br>"
+                                            +
+                                            "<b>Trail median score:</b> "
+                                            +
+                                            Number(
+                                                meta.median_score
+                                            ).toFixed(0)
+                                            +
+                                            "<br><br>"
+                                            +
+                                            "<button "
+                                            +
+                                            "id='hero-popup-report-button' "
+                                            +
+                                            "style='width:100%;padding:9px;border:none;border-radius:5px;background:#333;color:white;font-weight:bold;cursor:pointer;'>"
+                                            +
+                                            "Report conditions here"
+                                            +
+                                            "</button>"
+                                            +
+                                            "</div>";
+
+
+                                        L.popup()
+                                        .setLatLng(
+                                            e.latlng
+                                        )
+                                        .setContent(
+                                            popupHTML
+                                        )
+                                        .openOn(
+                                            map
+                                        );
+
+
+                                        setTimeout(
+                                            function() {
+
+                                                var button =
+                                                    document.getElementById(
+                                                        "hero-popup-report-button"
+                                                    );
+
+
+                                                if (
+                                                    button !== null
+                                                ) {
+
+                                                    button.onclick =
+                                                        function() {
+
+                                                            map.closePopup();
+
+                                                            window.openHeroReport(
+                                                                meta.trail,
+                                                                lat,
+                                                                lon
+                                                            );
+
+                                                        };
+
+                                                }
+
+                                            },
+                                            30
+                                        );
+
+                                    }
+                                );
+
+                            }
+                    }
+                ).addTo(
+                    targetGroup
+                );
+
+            })
+
+            .catch(function(error) {
+
+                console.error(
+                    "Hero Dirt trail layer error:",
+                    error
+                );
+
+            });
+
+        }
+
+
+        forecastGeoJSON.forEach(
+            function(cfg) {
+
+                var targetGroup =
+                    window[
+                        cfg.layer
+                    ];
+
+
+                if (
+                    targetGroup !== undefined
+                ) {
+
+                    addExternalTrailLayer(
+                        targetGroup,
+                        cfg.url
+                    );
+
+                }
+
+            }
+        );
+"""
+
+geojson_loader_js = (
+    geojson_loader_js.replace(
+        "__FORECAST_GEOJSON_CONFIG__",
+        forecast_geojson_js,
+    )
+)
+
+
 # ============================================================
 # JAVASCRIPT
 # ============================================================
@@ -2440,6 +2750,9 @@ document.addEventListener(
 
         var forecastLayers =
             {forecast_layer_js};
+
+
+{geojson_loader_js}
 
 
         // ====================================================
