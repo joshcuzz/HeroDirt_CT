@@ -2691,8 +2691,52 @@ geojson_loader_js = r"""
         }
 
 
+        // ====================================================
+        // LAZY-LOAD FORECAST TRAIL DATA
+        // ====================================================
+
+        function ensureForecastLayerLoaded(
+            cfg
+        ) {
+
+            var targetGroup =
+                window[
+                    cfg.layer
+                ];
+
+
+            if (
+                targetGroup === undefined
+                ||
+                cfg.loaded === true
+                ||
+                cfg.loading === true
+            ) {
+
+                return;
+
+            }
+
+
+            cfg.loading = true;
+
+            addExternalTrailLayer(
+                targetGroup,
+                cfg.url
+            );
+
+            cfg.loaded = true;
+            cfg.loading = false;
+
+        }
+
+
         forecastGeoJSON.forEach(
             function(cfg) {
+
+                cfg.loaded = false;
+                cfg.loading = false;
+
 
                 var targetGroup =
                     window[
@@ -2702,14 +2746,48 @@ geojson_loader_js = r"""
 
                 if (
                     targetGroup !== undefined
+                    &&
+                    map.hasLayer(
+                        targetGroup
+                    )
                 ) {
 
-                    addExternalTrailLayer(
-                        targetGroup,
-                        cfg.url
+                    ensureForecastLayerLoaded(
+                        cfg
                     );
 
                 }
+
+            }
+        );
+
+
+        map.on(
+            "overlayadd",
+            function(e) {
+
+                forecastGeoJSON.forEach(
+                    function(cfg) {
+
+                        var targetGroup =
+                            window[
+                                cfg.layer
+                            ];
+
+
+                        if (
+                            targetGroup ===
+                            e.layer
+                        ) {
+
+                            ensureForecastLayerLoaded(
+                                cfg
+                            );
+
+                        }
+
+                    }
+                );
 
             }
         );
