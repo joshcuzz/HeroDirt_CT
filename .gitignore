@@ -1,0 +1,14 @@
+.DS_Store
+__pycache__/
+*.pyc
+
+data/
+static/
+output/
+
+.env
+.vscode/
+.idea/
+
+# Generated web maps -- too large for GitHub until optimized
+web/*.html
