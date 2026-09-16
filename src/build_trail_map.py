@@ -1110,17 +1110,17 @@ mobile_css = """
     #hero-title-box {
         top:8px !important;
         left:8px !important;
-        right:8px !important;
-        width:auto !important;
-        padding:8px 10px !important;
+        right:auto !important;
+        width:185px !important;
+        padding:7px 9px !important;
     }
 
     #hero-title-box b {
-        font-size:15px !important;
+        font-size:14px !important;
     }
 
     #hero-title-box span {
-        font-size:10px !important;
+        font-size:9px !important;
     }
 
 
@@ -1167,7 +1167,7 @@ mobile_css = """
 
     #hero-legend {
         left:8px !important;
-        bottom:22px !important;
+        bottom:58px !important;
         width:145px !important;
         padding:8px 10px !important;
         font-size:10px !important;
@@ -1780,7 +1780,7 @@ Very Dry / Dusty<br>
 <span style="color:#d8ad58;">●</span>
 Dry / Firm<br>
 
-<span style="color:#b9ded8;">●</span>
+<span style="color:#8fcfc8;">●</span>
 Moist / Good<br>
 
 <span style="color:#42a89e;">●</span>
@@ -2780,9 +2780,82 @@ geojson_loader_js = r"""
                             e.layer
                         ) {
 
+                            // Keep only one forecast dataset
+                            // resident in memory at a time.
+                            forecastGeoJSON.forEach(
+                                function(otherCfg) {
+
+                                    var otherGroup =
+                                        window[
+                                            otherCfg.layer
+                                        ];
+
+
+                                    if (
+                                        otherGroup !== undefined
+                                        &&
+                                        otherGroup !== targetGroup
+                                    ) {
+
+                                        if (
+                                            map.hasLayer(
+                                                otherGroup
+                                            )
+                                        ) {
+
+                                            map.removeLayer(
+                                                otherGroup
+                                            );
+
+                                        }
+
+
+                                        otherGroup.clearLayers();
+
+                                        otherCfg.loaded = false;
+                                        otherCfg.loading = false;
+
+                                    }
+
+                                }
+                            );
+
+
                             ensureForecastLayerLoaded(
                                 cfg
                             );
+
+                        }
+
+                    }
+                );
+
+            }
+        );
+
+
+        map.on(
+            "overlayremove",
+            function(e) {
+
+                forecastGeoJSON.forEach(
+                    function(cfg) {
+
+                        var targetGroup =
+                            window[
+                                cfg.layer
+                            ];
+
+
+                        if (
+                            targetGroup ===
+                            e.layer
+                        ) {
+
+                            targetGroup.clearLayers();
+
+                            cfg.loaded = false;
+                            cfg.loading = false;
 
                         }
 
@@ -2800,6 +2873,75 @@ geojson_loader_js = (
     )
 )
 
+
+
+forecast_radio_js = r"""
+        // ====================================================
+        // FORECAST TIMES: MUTUALLY EXCLUSIVE RADIO BUTTONS
+        // ====================================================
+
+        function makeForecastControlsRadio() {
+
+            var forecastNames = [
+                "Now",
+                "+24 h",
+                "+48 h",
+                "+72 h",
+                "+96 h",
+                "+120 h"
+            ];
+
+
+            var labels =
+                document.querySelectorAll(
+                    ".leaflet-control-layers-overlays label"
+                );
+
+
+            labels.forEach(
+                function(label) {
+
+                    var labelText =
+                        label.textContent.trim();
+
+
+                    if (
+                        forecastNames.includes(
+                            labelText
+                        )
+                    ) {
+
+                        var input =
+                            label.querySelector(
+                                "input"
+                            );
+
+
+                        if (
+                            input !== null
+                        ) {
+
+                            input.type =
+                                "radio";
+
+                            input.name =
+                                "hero-forecast-time";
+
+                        }
+
+                    }
+
+                }
+            );
+
+        }
+
+
+        setTimeout(
+            makeForecastControlsRadio,
+            100
+        );
+"""
 
 # ============================================================
 # JAVASCRIPT
@@ -2831,6 +2973,8 @@ document.addEventListener(
 
 
 {geojson_loader_js}
+
+{forecast_radio_js}
 
 
         // ====================================================
