@@ -68,10 +68,13 @@ jobs:
         run: |
           python src/run_soil_model_v2.py
 
-      - name: Restore OSM trail cache
+      - name: Restore OSM trail caches
         run: |
           mkdir -p data/osm
+
           gunzip -c             data/osm/Connecticut_all_trails_overpass.json.gz             > data/osm/Connecticut_all_trails_overpass.json
+
+          gunzip -c             data/osm/Connecticut_trail_areas_overpass.json.gz             > data/osm/Connecticut_trail_areas_overpass.json
 
       - name: Build trail forecast
         run: |
