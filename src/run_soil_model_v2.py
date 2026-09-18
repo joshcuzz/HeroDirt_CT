@@ -1882,16 +1882,29 @@ def advance_interval(
 # ANALYSIS PERIOD
 # ============================================================
 
-forecast_start = (
-    nws_time[
-        0
-    ]
-    -
-    np.timedelta64(
-        6,
-        "h",
+if "forecast_start" in NWS.files:
+
+    forecast_start = NWS[
+        "forecast_start"
+    ].astype(
+        "datetime64[s]"
     )
-)
+
+else:
+
+    # Backward compatibility with older forcing files
+    # whose first interval was always exactly 6 hours.
+
+    forecast_start = (
+        nws_time[
+            0
+        ]
+        -
+        np.timedelta64(
+            6,
+            "h",
+        )
+    )
 
 
 analysis_indices = np.where(
@@ -2787,8 +2800,8 @@ for k in range(
     # This replaces the empirical v1 tread-drying demand
     # during the forecast only.
     #
-    # The analysis / MRMS replay still uses the original
-    # Hero Dirt drying formulation.
+    # The analysis / MRMS replay also uses Penman-style
+    # tread drying in the v2 model.
     # ========================================================
 
     penman_et = compute_penman_et_block(

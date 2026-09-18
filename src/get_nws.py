@@ -566,41 +566,79 @@ def convert_value(
 # ============================================================
 # CREATE FORECAST TIMELINE
 #
-# Align to next 6-hour UTC boundary.
+# Begin at the latest available MRMS analysis time.
+#
+# The first forecast interval may therefore be shorter than
+# 6 hours. It extends from the latest MRMS time to the next
+# fixed 6-hour UTC boundary. All later intervals are 6 hours.
+#
+# This prevents precipitation forecast between the latest
+# MRMS analysis and the next 6-hour boundary from being lost.
 # ============================================================
 
-now = datetime.now(
-    timezone.utc
+MRMS_FILE = (
+    ROOT
+    / "data"
+    / "mrms"
+    / "processed"
+    / "HeroDirt_MRMS_hourly.npz"
+)
+
+if not MRMS_FILE.exists():
+
+    raise RuntimeError(
+        f"Missing MRMS forcing file:\n{MRMS_FILE}"
+    )
+
+
+MRMS = np.load(
+    MRMS_FILE
+)
+
+mrms_time = MRMS[
+    "time"
+].astype(
+    "datetime64[s]"
+)
+
+latest_mrms_np = mrms_time[
+    -1
+]
+
+latest_mrms_seconds = int(
+    latest_mrms_np.astype(
+        "datetime64[s]"
+    ).astype(
+        np.int64
+    )
+)
+
+forecast_start = datetime.fromtimestamp(
+    latest_mrms_seconds,
+    tz=timezone.utc,
 )
 
 
-hour_floor = now.replace(
-    minute=0,
-    second=0,
-    microsecond=0,
-)
-
+# Next fixed 6-hour UTC boundary strictly after forecast_start.
 
 hour_number = int(
-    hour_floor.timestamp()
+    forecast_start.timestamp()
     //
     3600
 )
 
-
-aligned_hour_number = (
+next_boundary_hour = (
     (
-        hour_number + 5
+        hour_number
+        //
+        6
     )
-    //
-    6
-    *
-    6
-)
+    +
+    1
+) * 6
 
-
-forecast_start = datetime.fromtimestamp(
-    aligned_hour_number
+first_block_end = datetime.fromtimestamp(
+    next_boundary_hour
     *
     3600,
     tz=timezone.utc,
@@ -609,24 +647,34 @@ forecast_start = datetime.fromtimestamp(
 
 block_starts = [
     forecast_start
-    +
-    timedelta(
-        hours=6 * i
-    )
-    for i in range(
-        FORECAST_HOURS // 6
-    )
 ]
-
 
 block_ends = [
-    t
+    first_block_end
+]
+
+
+while (
+    block_ends[-1]
+    <
+    forecast_start
     +
     timedelta(
-        hours=6
+        hours=FORECAST_HOURS
     )
-    for t in block_starts
-]
+):
+
+    block_starts.append(
+        block_ends[-1]
+    )
+
+    block_ends.append(
+        block_ends[-1]
+        +
+        timedelta(
+            hours=6
+        )
+    )
 
 
 nblock = len(
@@ -1478,6 +1526,12 @@ np.savez_compressed(
     OUT_FILE,
 
     time=forecast_time,
+    forecast_start=np.datetime64(
+        forecast_start.replace(
+            tzinfo=None
+        ),
+        "s",
+    ),
 
     temperature_c=temperature,
 
