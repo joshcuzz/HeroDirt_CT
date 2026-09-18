@@ -1656,7 +1656,7 @@ m.get_root().html.add_child(
 explorer_button_html = """
 <a
     id="hero-explorer-button"
-    href="explorer.html"
+    href="HeroDirt_explorer.html"
     style="
         position:fixed;
         top:15px;
