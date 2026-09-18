@@ -43,6 +43,7 @@ import json
 
 import numpy as np
 import rasterio
+from affine import Affine
 
 from rasterio.warp import (
     calculate_default_transform,
@@ -110,6 +111,12 @@ SCIENCE_OPACITY = 0.35
 PRECIP_OPACITY = 0.40
 
 MASK_OPACITY = 0.12
+
+# Explorer visualization only.
+# The underlying Hero Dirt model remains at native 200 m resolution.
+# A value of 2 reduces displayed raster dimensions by ~2x in X and Y,
+# or about 4x fewer display pixels.
+DISPLAY_DOWNSAMPLE = 2
 
 
 # ============================================================
@@ -370,9 +377,9 @@ dst_crs = "EPSG:4326"
 
 
 (
-    dst_transform,
-    dst_width,
-    dst_height,
+    dst_transform_native,
+    dst_width_native,
+    dst_height_native,
 ) = calculate_default_transform(
 
     src_crs,
@@ -382,6 +389,74 @@ dst_crs = "EPSG:4326"
     src_height,
 
     *src_bounds,
+)
+
+
+# ============================================================
+# EXPLORER DISPLAY GRID
+# ============================================================
+
+dst_width = max(
+    1,
+    int(
+        np.ceil(
+            dst_width_native
+            /
+            DISPLAY_DOWNSAMPLE
+        )
+    ),
+)
+
+dst_height = max(
+    1,
+    int(
+        np.ceil(
+            dst_height_native
+            /
+            DISPLAY_DOWNSAMPLE
+        )
+    ),
+)
+
+
+scale_x = (
+    dst_width_native
+    /
+    dst_width
+)
+
+scale_y = (
+    dst_height_native
+    /
+    dst_height
+)
+
+
+dst_transform = (
+    dst_transform_native
+    *
+    Affine.scale(
+        scale_x,
+        scale_y,
+    )
+)
+
+
+print()
+print(
+    "Explorer display grid:"
+)
+print(
+    f"  native WGS84: "
+    f"{dst_height_native} x {dst_width_native}"
+)
+print(
+    f"  display:      "
+    f"{dst_height} x {dst_width}"
+)
+print(
+    f"  downsample:   "
+    f"{DISPLAY_DOWNSAMPLE}x"
 )
 
 

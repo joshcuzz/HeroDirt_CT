@@ -95,6 +95,7 @@ echo "------------------------------------------------------------"
 mkdir -p docs/data
 
 cp web/HeroDirt_trails.html docs/index.html
+cp web/HeroDirt_explorer.html docs/HeroDirt_explorer.html
 cp web/data/*.geojson docs/data/
 
 
@@ -103,6 +104,7 @@ cp web/data/*.geojson docs/data/
 # ============================================================
 
 git add docs/index.html
+git add docs/HeroDirt_explorer.html
 git add -f docs/data/*.geojson
 
 if git diff --cached --quiet; then
