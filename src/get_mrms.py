@@ -55,7 +55,7 @@ from rasterio.warp import reproject, Resampling
 # PATHS
 # ============================================================
 
-ROOT = Path.home() / "HeroDirt_CT"
+ROOT = Path(__file__).resolve().parents[1]
 
 GRID_FILE = (
     ROOT

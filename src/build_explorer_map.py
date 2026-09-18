@@ -64,7 +64,7 @@ from matplotlib.colors import (
 # PATHS
 # ============================================================
 
-ROOT = Path.home() / "HeroDirt_CT"
+ROOT = Path(__file__).resolve().parents[1]
 
 STATIC_FILE = (
     ROOT
