@@ -11,3 +11,5 @@ earthaccess
 beautifulsoup4
 h5py
 affine
+cfgrib
+eccodes
