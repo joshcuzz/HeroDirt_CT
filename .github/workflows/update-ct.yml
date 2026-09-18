@@ -43,10 +43,20 @@ jobs:
         run: |
           python src/get_mrms.py
 
-      - name: Update SMAP
+      - name: Configure Earthdata credentials
         env:
           EARTHDATA_USERNAME: ${{ secrets.EARTHDATA_USERNAME }}
           EARTHDATA_PASSWORD: ${{ secrets.EARTHDATA_PASSWORD }}
+        run: |
+          cat > ~/.netrc <<EOF
+          machine urs.earthdata.nasa.gov
+            login $EARTHDATA_USERNAME
+            password $EARTHDATA_PASSWORD
+          EOF
+
+          chmod 600 ~/.netrc
+
+      - name: Update SMAP
         run: |
           python src/get_smap.py
 
