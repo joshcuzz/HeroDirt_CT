@@ -60,7 +60,21 @@ jobs:
 
       - name: Update SMAP
         run: |
-          python src/get_smap.py
+          for attempt in 1 2 3; do
+            echo "SMAP attempt $attempt/3"
+
+            if python src/get_smap.py; then
+              exit 0
+            fi
+
+            if [ "$attempt" -lt 3 ]; then
+              echo "SMAP failed; waiting 60 seconds before retry..."
+              sleep 60
+            fi
+          done
+
+          echo "SMAP failed after 3 attempts."
+          exit 1
 
       - name: Update NWS forecast
         run: |
