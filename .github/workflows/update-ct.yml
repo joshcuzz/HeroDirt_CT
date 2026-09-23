@@ -41,6 +41,51 @@ jobs:
           python --version
           pip list
 
+      - name: Check Supabase rider feedback database
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: |
+          python - <<'PYCODE'
+          import os
+          import urllib.request
+          import urllib.error
+
+          url = os.environ["SUPABASE_URL"].rstrip("/")
+          key = os.environ["SUPABASE_SECRET_KEY"]
+
+          endpoint = (
+              url
+              + "/rest/v1/trail_reports"
+              + "?select=observation_utc"
+              + "&order=observation_utc.desc"
+              + "&limit=1"
+          )
+
+          req = urllib.request.Request(
+              endpoint,
+              headers={
+                  "apikey": key,
+                  "User-Agent": "HeroDirt-CT-healthcheck/1.0",
+              },
+          )
+
+          try:
+              with urllib.request.urlopen(req, timeout=30) as r:
+                  body = r.read().decode()
+                  print("Supabase status:", r.status)
+                  print("Latest report query:", body)
+
+          except urllib.error.HTTPError as e:
+              print("Supabase HTTP error:", e.code)
+              print(e.read().decode())
+              raise
+
+          except Exception as e:
+              print("Supabase connection failed:", repr(e))
+              raise
+          PYCODE
+
       - name: Update MRMS
         run: |
           python src/get_mrms.py
