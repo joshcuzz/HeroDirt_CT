@@ -3,7 +3,7 @@ name: Update Hero Dirt CT
 on:
   workflow_dispatch:
   schedule:
-    - cron: "17 */3 * * *"
+    - cron: "37 */3 * * *"
 
 permissions:
   contents: read
